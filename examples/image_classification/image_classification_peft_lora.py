@@ -18,7 +18,7 @@
 # In[1]:
 
 
-get_ipython().system('pip install transformers accelerate evaluate datasets loralib git+https://github.com/huggingface/peft -q')
+# get_ipython().system('pip install transformers accelerate evaluate datasets loralib git+https://github.com/huggingface/peft -q')
 
 
 # ## Authentication
@@ -28,9 +28,9 @@ get_ipython().system('pip install transformers accelerate evaluate datasets lora
 # In[2]:
 
 
-from huggingface_hub import notebook_login
+# from huggingface_hub import notebook_login
 
-notebook_login()
+# notebook_login()
 
 
 # ## Check the library versions
@@ -84,7 +84,8 @@ for i, label in enumerate(labels):
     label2id[label] = i
     id2label[i] = label
 
-id2label[2]
+print(f"标签到id的映射：{label2id}")
+print(id2label[2])
 
 
 # 2. We load the image processor of the model we're fine-tuning.

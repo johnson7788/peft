@@ -29,6 +29,11 @@ from ..utils import PeftConfig, PeftType, transpose
 
 
 def is_bnb_available():
+    """
+    bitsandbytes是CUDA自定义函数的一个轻量级封装，特别是8位优化器、矩阵乘法（LLM.int8()）和量化函数。
+    Returns:
+
+    """
     return importlib.util.find_spec("bitsandbytes") is not None
 
 
@@ -39,11 +44,11 @@ if is_bnb_available():
 @dataclass
 class LoraConfig(PeftConfig):
     """
-    This is the configuration class to store the configuration of a [`~peft.Lora`].
+    这是一个配置类，用于存储一个[`~peft.Lora`]的配置。
 
     Args:
-        r (`int`): Lora attention dimension
-        target_modules (`Union[List[str],str]`): The names of the modules to apply Lora to.
+        r (`int`): LoRA注意力维度
+        target_modules (`Union[List[str],str]`): 要应用Lora的模块的名称。
         lora_alpha (`float`): The alpha parameter for Lora scaling.
         lora_dropout (`float`): The dropout probability for Lora layers.
         merge_weights (`bool`):
@@ -55,31 +60,31 @@ class LoraConfig(PeftConfig):
             and saved in the final checkpoint.
     """
 
-    r: int = field(default=8, metadata={"help": "Lora attention dimension"})
+    r: int = field(default=8, metadata={"help": "LoRA注意力维度"})
     target_modules: Optional[Union[List[str], str]] = field(
         default=None,
         metadata={
-            "help": "List of module names or regex expression of the module names to replace with Lora."
+            "help": "要用Lora替换的模块名称的列表或模块名称的regex表达式。"
             "For example, ['q', 'v'] or '.*decoder.*(SelfAttention|EncDecAttention).*(q|v)$' "
         },
     )
     lora_alpha: int = field(default=None, metadata={"help": "Lora alpha"})
     lora_dropout: float = field(default=None, metadata={"help": "Lora dropout"})
     merge_weights: bool = field(
-        default=False, metadata={"help": "Merge weights of the original model and the Lora model"}
+        default=False, metadata={"help": "合并原始模型和Lora模型的权重"}
     )
     fan_in_fan_out: bool = field(
         default=False,
-        metadata={"help": "Set this to True if the layer to replace stores weight like (fan_in, fan_out)"},
+        metadata={"help": "如果要替换的层存储的权重像（fan_in, fan_out），则将此设置为True。"},
     )
     enable_lora: Optional[List[bool]] = field(default=None, metadata={"help": "Used with `lora.MergedLinear`."})
-    bias: str = field(default="none", metadata={"help": "Bias type for Lora. Can be 'none', 'all' or 'lora_only'"})
+    bias: str = field(default="none", metadata={"help": "Lora的Bias类型。可以是'none', 'all' or 'lora_only'"})
     modules_to_save: Optional[List[str]] = field(
         default=None,
         metadata={
-            "help": "List of modules apart from LoRA layers to be set as trainable and saved in the final checkpoint. "
-            "For example, in Sequence Classification or Token Classification tasks, "
-            "the final layer `classifier/score` are randomly initialized and as such need to be trainable and saved."
+            "help": "除LoRA层之外的模块列表，要设置为可训练的模块，并保存在最后的checkpoint。 "
+            "例如，在序列分类或token分类任务中。 "
+            "最后一层的`classifier/score` 是随机初始化的，因此需要可训练并保存。"
         },
     )
 
@@ -89,8 +94,7 @@ class LoraConfig(PeftConfig):
 
 class LoraModel(torch.nn.Module):
     """
-    Creates Low Rank Adapter (Lora) model from a pretrained transformers model.
-
+    从预训练的transformer模型创建低秩适配器（Lora）模型。
     Args:
         model ([`transformers.PreTrainedModel`]): The model to be adapted.
         config ([`LoraConfig`]): The configuration of the Lora model.
@@ -134,7 +138,7 @@ class LoraModel(torch.nn.Module):
             "fan_in_fan_out": self.peft_config.fan_in_fan_out,
             "merge_weights": self.peft_config.merge_weights or self.peft_config.inference_mode,
         }
-        key_list = [key for key, _ in self.model.named_modules()]
+        key_list = [key for key, _ in self.model.named_modules()]  #模型的所有模块的名称，例如roberta有446个，准备替换模型参数
         for key in key_list:
             if isinstance(self.peft_config.target_modules, str):
                 target_module_found = re.fullmatch(self.peft_config.target_modules, key)
@@ -143,7 +147,7 @@ class LoraModel(torch.nn.Module):
             if target_module_found:
                 if not is_target_modules_in_base_model:
                     is_target_modules_in_base_model = True
-                parent, target, target_name = self._get_submodules(key)
+                parent, target, target_name = self._get_submodules(key) # parent：RobertaSelfAttention, target: Linear模块Linear(in_features=1024, out_features=1024, bias=True)， target_name: query
                 bias = target.bias is not None
                 if loaded_in_8bit and isinstance(target, bnb.nn.Linear8bitLt):
                     kwargs.update(
@@ -184,12 +188,24 @@ class LoraModel(torch.nn.Module):
             )
 
     def _get_submodules(self, key):
+        # 根据模型的名称key，获取模型的父模块，目标模块，目标模块的名称
         parent = self.model.get_submodule(".".join(key.split(".")[:-1]))
         target_name = key.split(".")[-1]
         target = self.model.get_submodule(key)
         return parent, target, target_name
 
     def _replace_module(self, parent_module, child_name, new_module, old_module):
+        """
+        替换模块的参数
+        Args:
+            parent_module ():
+            child_name ():
+            new_module ():
+            old_module ():
+
+        Returns:
+
+        """
         setattr(parent_module, child_name, new_module)
         new_module.weight = old_module.weight
         if old_module.bias is not None:
@@ -210,12 +226,28 @@ class LoraModel(torch.nn.Module):
         return None
 
     def get_peft_config_as_dict(self, inference: bool = False):
+        """
+        把PEFT Config转换为字典
+        Args:
+            inference ():
+
+        Returns:
+
+        """
         config = {k: v.value if isinstance(v, Enum) else v for k, v in asdict(self.peft_config).items()}
         if inference:
             config["inference_mode"] = True
         return config
 
     def _set_adapter_layers(self, enabled=True):
+        """
+        设置适配器层是否开启
+        Args:
+            enabled ():
+
+        Returns:
+
+        """
         for module in self.model.modules():
             if isinstance(module, LoraLayer):
                 module.disable_adapters = False if enabled else True
@@ -278,7 +310,7 @@ class LoraLayer:
 
 
 class Linear(nn.Linear, LoraLayer):
-    # Lora implemented in a dense layer
+    # LoRA在密集的层中实施
     def __init__(
         self,
         in_features: int,
@@ -299,7 +331,7 @@ class Linear(nn.Linear, LoraLayer):
             self.lora_A = nn.Linear(in_features, r, bias=False)
             self.lora_B = nn.Linear(r, out_features, bias=False)
             self.scaling = self.lora_alpha / self.r
-            # Freezing the pre-trained weight matrix
+            # Freezing the pre-trained weight matrix，原有预训练的权重矩阵不参与训练
             self.weight.requires_grad = False
         self.reset_parameters()
         if fan_in_fan_out:
@@ -308,11 +340,19 @@ class Linear(nn.Linear, LoraLayer):
     def reset_parameters(self):
         nn.Linear.reset_parameters(self)
         if hasattr(self, "lora_A"):
-            # initialize A the same way as the default for nn.Linear and B to zero
+            # 将A的初始化方式与nn.Linear的默认方式相同，B的初始化方式为零
             nn.init.kaiming_uniform_(self.lora_A.weight, a=math.sqrt(5))
             nn.init.zeros_(self.lora_B.weight)
 
     def train(self, mode: bool = True):
+        """
+        设置LoRA模型为训练模式的开关
+        Args:
+            mode ():
+
+        Returns:
+
+        """
         nn.Linear.train(self, mode)
         self.lora_A.train(mode)
         self.lora_B.train(mode)
@@ -339,14 +379,17 @@ class Linear(nn.Linear, LoraLayer):
     def forward(self, x: torch.Tensor):
         if self.disable_adapters:
             if self.r > 0 and self.merged:
+                # 不开启适配器，那么权重就是原始的权重，需要减去合并的权重
                 self.weight.data -= (
                     transpose(self.lora_B.weight @ self.lora_A.weight, self.fan_in_fan_out) * self.scaling
                 )
                 self.merged = False
             return F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
-        elif self.r > 0 and not self.merged:
+        elif self.r > 0 and not self.merged:  #self.merged:一个标志符，表明是否是合并的状态
+            # 原始的权重self.weight，经过线性层后得到的结果为result
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
             if self.r > 0:
+                # 如果秩r大于0，肯定是开启适配器了，将原始的权重与适配器的权重相加
                 result += self.lora_B(self.lora_A(self.lora_dropout(x))) * self.scaling
             return result
         else:

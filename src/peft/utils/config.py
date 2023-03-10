@@ -47,11 +47,10 @@ class TaskType(str, enum.Enum):
 @dataclass
 class PeftConfigMixin(PushToHubMixin):
     r"""
-    This is the base configuration class for PEFT adapter models. It contains all the methods that are common to all
-    PEFT adapter models. This class inherits from `transformers.utils.PushToHubMixin` which contains the methods to
-    push your model to the Hub. The method `save_pretrained` will save the configuration of your adapter model in a
-    directory. The method `from_pretrained` will load the configuration of your adapter model from a directory.
-
+    这是PEFT适配器模型的基础配置类。它包含了所有PEFT适配器模型所共有的方法。
+    这个类继承于`transformers.utils.PushToHubMixin`，它包含了将你的模型推送到Hub的方法。
+    方法`save_pretrained`将在一个目录中保存你的适配器模型的配置。
+    方法`from_pretrained`将从一个目录中加载你的适配器模型的配置。
     Args:
         peft_type (Union[[`~peft.utils.config.PeftType`], `str`]): The type of Peft method to use.
     """
@@ -134,7 +133,7 @@ class PeftConfigMixin(PushToHubMixin):
 @dataclass
 class PeftConfig(PeftConfigMixin):
     """
-    This is the base configuration class to store the configuration of a :class:`~peft.PeftModel`.
+    这是一个基础配置类，用于存储一个:class:`~peft.PeftModel`的配置。
 
     Args:
         peft_type (Union[[`~peft.utils.config.PeftType`], `str`]): The type of Peft method to use.
@@ -151,7 +150,7 @@ class PeftConfig(PeftConfigMixin):
 @dataclass
 class PromptLearningConfig(PeftConfig):
     """
-    This is the base configuration class to store the configuration of a Union[[`~peft.PrefixTuning`],
+    这是一个基础配置类，用于存储Union[[`~peft.PrefixTuning]]的配置。
     [`~peft.PromptEncoder`], [`~peft.PromptTuning`]].
 
     Args:
