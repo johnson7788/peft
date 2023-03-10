@@ -25,13 +25,12 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer, get_
 from tqdm import tqdm
 
 
-def train_model():
+def train_model(num_epochs=2, use_lora=True):
     batch_size = 32
     model_name_or_path = "roberta-large"
     task = "mrpc"  #任务类型
     peft_type = PeftType.LORA
     device = "cuda"
-    num_epochs = 20
     peft_config = LoraConfig(task_type="SEQ_CLS", inference_mode=False, r=8, lora_alpha=16, lora_dropout=0.1)
     lr = 3e-4
     if any(k in model_name_or_path for k in ("gpt", "opt", "bloom")):
@@ -69,10 +68,11 @@ def train_model():
         tokenized_datasets["validation"], shuffle=False, collate_fn=collate_fn, batch_size=batch_size
     )
     model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path, return_dict=True)
-    model = get_peft_model(model, peft_config)
+    if use_lora:
+        model = get_peft_model(model, peft_config)
+        print(f"打印模型中可训练的参数")
+        model.print_trainable_parameters()
     # 打印模型中可训练的参数
-    print(f"打印模型中可训练的参数")
-    model.print_trainable_parameters()
     print(f"打印模型结构")
     print(model)
     optimizer = AdamW(params=model.parameters(), lr=lr)
@@ -110,6 +110,12 @@ def train_model():
 
         eval_metric = metric.compute()
         print(f"epoch {epoch}:", eval_metric)
+    # 保存模型到本地
+    model.save_pretrained("roberta-large-peft-lora")
+    print(f"保存模型成功")
+    # 模型文件包括,adapter_config.json, adapter_model.bin, 模型很小
+    # -rw-rw-r-- 1 johnson johnson  349 Mar 10 12:51 adapter_config.json
+    # -rw-rw-r-- 1 johnson johnson 7.1M Mar 10 12:51 adapter_model.bin
 
 # ## Share adapters on the 🤗 Hub
 

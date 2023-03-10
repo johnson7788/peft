@@ -25,6 +25,9 @@ from .adapters_utils import CONFIG_NAME
 
 
 class PeftType(str, enum.Enum):
+    """
+    PEFT模型的类型
+    """
     PROMPT_TUNING = "PROMPT_TUNING"
     P_TUNING = "P_TUNING"
     PREFIX_TUNING = "PREFIX_TUNING"
@@ -32,6 +35,9 @@ class PeftType(str, enum.Enum):
 
 
 class TaskType(str, enum.Enum):
+    """
+    任务类型，支持的任务类型包括：序列分类，序列到序列语言模型，因果语言模型，token分类
+    """
     SEQ_CLS = "SEQ_CLS"
     SEQ_2_SEQ_LM = "SEQ_2_SEQ_LM"
     CAUSAL_LM = "CAUSAL_LM"

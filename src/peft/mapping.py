@@ -23,21 +23,21 @@ from .peft_model import (
 from .tuners import LoraConfig, PrefixTuningConfig, PromptEncoderConfig, PromptTuningConfig
 from .utils import PromptLearningConfig
 
-
+# 任务类型到模型的peft类的映射
 MODEL_TYPE_TO_PEFT_MODEL_MAPPING = {
     "SEQ_CLS": PeftModelForSequenceClassification,
     "SEQ_2_SEQ_LM": PeftModelForSeq2SeqLM,
     "CAUSAL_LM": PeftModelForCausalLM,
     "TOKEN_CLS": PeftModelForTokenClassification,
 }
-
+# peft模型类型到各种peft模型的配置的映射
 PEFT_TYPE_TO_CONFIG_MAPPING = {
     "PROMPT_TUNING": PromptTuningConfig,
     "PREFIX_TUNING": PrefixTuningConfig,
     "P_TUNING": PromptEncoderConfig,
     "LORA": LoraConfig,
 }
-
+# 对于LoRA模型，需要将模型的某些层的权重转换为LoRA模型的权重，这是映射不同的模型应该转换哪些权重
 TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING = {
     "t5": ["q", "v"],
     "mt5": ["q", "v"],
@@ -61,7 +61,7 @@ TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING = {
 def get_peft_config(config_dict):
     """
     Returns a Peft config object from a dictionary.
-
+    返回是4种peft配置中的一种，例如LoRA的配置
     Args:
         config_dict (`Dict[str, Any]`): Dictionary containing the configuration parameters.
     """
@@ -70,6 +70,7 @@ def get_peft_config(config_dict):
 
 
 def _prepare_prompt_learning_config(peft_config, model_config):
+    # 为提示学习准备的peft配置
     if peft_config.num_layers is None:
         if "num_hidden_layers" in model_config:
             num_layers = model_config["num_hidden_layers"]
@@ -112,6 +113,7 @@ def _prepare_prompt_learning_config(peft_config, model_config):
 
 
 def _prepare_lora_config(peft_config, model_config):
+    # Lora的配置
     if peft_config.target_modules is None:
         if model_config["model_type"] not in TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING:
             raise ValueError("Please specify `target_modules` in `peft_config`")
@@ -127,7 +129,7 @@ def _prepare_lora_config(peft_config, model_config):
 def get_peft_model(model, peft_config):
     """
     Returns a Peft model object from a model and a config.
-
+    返回哪种peft的任务类型的模型
     Args:
         model ([`transformers.PreTrainedModel`]): Model to be wrapped.
         peft_config ([`PeftConfig`]): Configuration object containing the parameters of the Peft model.

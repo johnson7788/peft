@@ -18,8 +18,7 @@ from .config import PeftType
 
 def get_peft_model_state_dict(model, state_dict=None):
     """
-    Get the state dict of the Peft model.
-
+    获取Peft模型的状态字典state dict，即peft模型参数。
     Args:
         model ([`PeftModel`]): The Peft model. When using torch.nn.DistributedDataParallel, DeepSpeed or FSDP,
         the model should be the underlying model/unwrapped model (i.e. model.module).

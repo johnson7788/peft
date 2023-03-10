@@ -45,7 +45,7 @@ from .utils import (
 
 class PeftModel(PushToHubMixin, torch.nn.Module):
     """
-    Parameter-Efficient Fine-Tuning Model. Base model encompassing various Peft methods.
+    参数有效的微调模型。包含各种Peft方法的基础模型。
 
     Args:
         model ([`PreTrainedModel`]): The base transformer model used for Peft.
@@ -53,8 +53,8 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
 
     **Attributes**:
-        - **base_model** ([`PreTrainedModel`]) -- The base transformer model used for Peft.
-        - **peft_config** ([`PeftConfig`]) -- The configuration of the Peft model.
+        - **base_model** ([`PreTrainedModel`]) -- 用于Peft的基础transformer模型。
+        - **peft_config** ([`PeftConfig`]) -- Peft模型的配置。
         - **modules_to_save** (`list` of `str`) -- The list of sub-module names to save when
         saving the model.
         - **prompt_encoder** ([`PromptEncoder`]) -- The prompt encoder used for Peft if
@@ -69,8 +69,8 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
     def __init__(self, model, peft_config: PeftConfig):
         super().__init__()
-        self.peft_config = peft_config
-        self.base_model = model
+        self.peft_config = peft_config  #Peft模型的配置。
+        self.base_model = model  #用于Peft的基础transformer模型。
         self.config = self.base_model.config
         self.modules_to_save = None
         if isinstance(self.peft_config, PromptLearningConfig):
@@ -85,20 +85,18 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
     def save_pretrained(self, save_directory, **kwargs):
         r"""
         Args:
-        This function saves the adapter model and the adapter configuration files to a directory, so that it can be
-        re-loaded using the `LoraModel.from_pretrained` class method, and also used by the `LoraModel.push_to_hub`
-        method.
+        这个函数将适配器模型和适配器配置文件保存到一个目录中，这样就可以使用`LoraModel.from_pretrained`类方法重新加载，也可以被`LoraModel.push_to_hub`使用。
+        使用`LoraModel.from_pretrained`类方法重新加载，也可由`LoraModel.push_to_hub`方法使用。
             save_directory (`str`):
-                Directory where the adapter model and configuration files will be saved (will be created if it does not
-                exist).
+            保存适配器模型和适配器配置文件的目录（如果不存在，则将创建）。
             **kwargs:
-                Additional keyword arguments passed along to the `push_to_hub` method.
+            传递给`push_to_hub`方法的额外关键字参数。
         """
         if os.path.isfile(save_directory):
             raise ValueError(f"Provided path ({save_directory}) should be a directory, not a file")
         os.makedirs(save_directory, exist_ok=True)
 
-        # save only the trainable weights
+        # 只保存可训练的权重
         output_state_dict = get_peft_model_state_dict(self, kwargs.get("state_dict", None))
         torch.save(output_state_dict, os.path.join(save_directory, WEIGHTS_NAME))
 
@@ -219,7 +217,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
     def get_prompt_embedding_to_save(self):
         """
-        Returns the prompt embedding to save when saving the model. Only applicable when `peft_config.peft_type !=
+        返回保存模型时要保存的提示嵌入。 Only applicable when `peft_config.peft_type !=
         PeftType.LORA`.
         """
         prompt_tokens = self.prompt_tokens.unsqueeze(0).expand(1, -1).to(self.device)
@@ -230,7 +228,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
     def get_prompt(self, batch_size):
         """
-        Returns the virtual prompts to use for Peft. Only applicable when `peft_config.peft_type != PeftType.LORA`.
+        返回用于Peft的虚拟提示。 Only applicable when `peft_config.peft_type != PeftType.LORA`.
         """
         prompt_tokens = self.prompt_tokens.unsqueeze(0).expand(batch_size, -1).to(self.device)
         if self.peft_config.peft_type == PeftType.PREFIX_TUNING:
@@ -264,7 +262,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
     def print_trainable_parameters(self):
         """
-        Prints the number of trainable parameters in the model.
+        打印模型中可训练参数的数量。
         """
         trainable_params = 0
         all_param = 0
@@ -278,7 +276,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             if param.requires_grad:
                 trainable_params += num_params
         print(
-            f"trainable params: {trainable_params} || all params: {all_param} || trainable%: {100 * trainable_params / all_param}"
+            f"可训练参数: {trainable_params} || 总的参数量: {all_param} || trainable%: {100 * trainable_params / all_param}"
         )
 
     def __getattr__(self, name: str):
@@ -297,7 +295,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
     @contextmanager
     def disable_adapter(self):
         """
-        Disables the adapter module.
+        禁用适配器模块。
         """
         if isinstance(self.peft_config, PromptLearningConfig):
             old_forward = self.forward
@@ -319,7 +317,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
 class PeftModelForSequenceClassification(PeftModel):
     """
-    Peft model for sequence classification tasks.
+    用于序列分类任务的Peft模型。
 
     Args:
         model ([`PreTrainedModel`]): Base transformer model
@@ -367,7 +365,7 @@ class PeftModelForSequenceClassification(PeftModel):
         **kwargs,
     ):
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-
+        # 对于Lora模型，直接调用基础模型的forward方法。
         if not isinstance(self.peft_config, PromptLearningConfig):
             return self.base_model(
                 input_ids=input_ids,
@@ -490,7 +488,7 @@ class PeftModelForSequenceClassification(PeftModel):
 
 class PeftModelForCausalLM(PeftModel):
     """
-    Peft model for Causal LM
+    Peft model for Causal LM，因果生成模型
 
     Args:
         model ([`PreTrainedModel`]): Base transformer model
@@ -527,6 +525,7 @@ class PeftModelForCausalLM(PeftModel):
         **kwargs,
     ):
         if not isinstance(self.peft_config, PromptLearningConfig):
+            # 对于LoRA模型，直接调用base_model的forward方法
             return self.base_model(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
@@ -600,6 +599,7 @@ class PeftModelForCausalLM(PeftModel):
             return self.base_model.generate(**kwargs)
 
     def prepare_inputs_for_generation(self, *args, **kwargs):
+        # 生成开始前的一些模型的配置工作
         model_kwargs = self.base_model_prepare_inputs_for_generation(*args, **kwargs)
         if isinstance(self.peft_config, PromptLearningConfig):
             if model_kwargs["past_key_values"] is None and self.peft_config.peft_type == PeftType.PREFIX_TUNING:

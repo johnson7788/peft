@@ -18,6 +18,7 @@ import torch
 
 # needed for prefix-tuning of bloom model
 def bloom_model_postprocess_past_key_value(past_key_values):
+    # Bloom模型的后处理
     past_key_values = torch.cat(past_key_values)
     total_layers, batch_size, num_attention_heads, num_virtual_tokens, head_dim = past_key_values.shape
     keys = past_key_values[: total_layers // 2]
@@ -34,7 +35,7 @@ def prepare_model_for_int8_training(
     model, output_embedding_layer_name="lm_head", use_gradient_checkpointing=True, layer_norm_names=["layer_norm"]
 ):
     r"""
-    This method wrapps the entire protocol for preparing a model before running a training. This includes:
+    该方法封装了在运行训练前准备模型的整个协议。This includes:
         1- Cast the layernorm in fp32 2- making output embedding layer require grads 3- Add the upcasting of the lm
         head to fp32
 
@@ -94,7 +95,7 @@ TRANSFORMERS_MODELS_TO_PREFIX_TUNING_POSTPROCESS_MAPPING = {
 # copied from transformers.models.bart.modeling_bart
 def shift_tokens_right(input_ids: torch.Tensor, pad_token_id: int, decoder_start_token_id: int):
     """
-    Shift input ids one token to the right.
+    将输入的id向右移动一个token。
 
     Args:
         input_ids (`torch.LongTensor` of shape `(batch_size, sequence_length)`): input ids
@@ -114,6 +115,7 @@ def shift_tokens_right(input_ids: torch.Tensor, pad_token_id: int, decoder_start
 
 
 def _set_trainable(model):
+    #将模型的所有参数设置为可训练的
     if model.modules_to_save is not None:
         for name, param in model.named_parameters():
             if any(module_name in name for module_name in model.modules_to_save):
@@ -121,6 +123,15 @@ def _set_trainable(model):
 
 
 def fsdp_auto_wrap_policy(model):
+    """
+    自动包装模型，以便在FSDP中使用。
+    FullyShardedDataParallelPlugin是一个加速器插件，它可以将模型包装在FSDP中，以便在多个GPU上进行训练。
+    Args:
+        model ():
+
+    Returns:
+
+    """
     import functools
     import os
 
@@ -156,4 +167,13 @@ def fsdp_auto_wrap_policy(model):
 
 
 def transpose(weight, fan_in_fan_out):
+    """
+    转置权重
+    Args:
+        weight ():
+        fan_in_fan_out ():
+
+    Returns:
+
+    """
     return weight.T if fan_in_fan_out else weight
