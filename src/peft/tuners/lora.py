@@ -48,16 +48,17 @@ class LoraConfig(PeftConfig):
 
     Args:
         r (`int`): LoRA注意力维度
-        target_modules (`Union[List[str],str]`): 要应用Lora的模块的名称。
-        lora_alpha (`float`): The alpha parameter for Lora scaling.
+        target_modules (`Union[List[str],str]`): 要用Lora替换的模块名称的列表或模块名称的regex表达式。例如['q', ‘v’]，替换成原有参数+Lora的模块的参数
+        lora_alpha (`float`): 在self.scaling = self.lora_alpha / self.r，缩放，对self.lora_A和self.lora_B这2个矩阵相乘后进行缩放
         lora_dropout (`float`): The dropout probability for Lora layers.
         merge_weights (`bool`):
             Whether to merge the weights of the Lora layers with the base transformer model in `eval` mode.
-        fan_in_fan_out (`bool`): Set this to True if the layer to replace stores weight like (fan_in, fan_out)
-        enable_lora ( `List[bool]`): Used with `lora.MergedLinear`.
-        bias (`str`): Bias type for Lora. Can be 'none', 'all' or 'lora_only'
+        fan_in_fan_out (`bool`): Set this to True if the layer to replace stores weight like (fan_in, fan_out)，是否在线性层中对Lora的weight进行转置
+        enable_lora ( `List[bool]`): Used with `lora.MergedLinear`，开关，表示是否使用MergedLinear8bitLt或MergedLinear代替普通自定义的Linear
+        bias (`str`): Bias type for Lora. Can be 'none', 'all' or 'lora_only'，none表示：bias是否需要更新参数即requires_grad，默认只更新lora模块的bias，all表示对模型的所有bias都进行更新，lora_only：表示只更新lora模块的bias，和none相似，但是会明确设置下lora的bias为requires_grad状态
         modules_to_save (`List[str]`):List of modules apart from LoRA layers to be set as trainable
-            and saved in the final checkpoint.
+            and saved in the final checkpoint.除LoRA层之外的模块列表，要设置为可训练的模块，并保存在最后的checkpoint。例如，在序列分类或token分类任务中。 "
+            "最后一层的`classifier/score` 是随机初始化的，因此需要可训练并保存
     """
 
     r: int = field(default=8, metadata={"help": "LoRA注意力维度"})
