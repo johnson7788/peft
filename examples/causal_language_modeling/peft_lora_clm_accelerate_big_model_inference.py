@@ -27,9 +27,6 @@ num_epochs = 50
 batch_size = 8
 
 
-# In[ ]:
-
-
 from datasets import load_dataset
 
 dataset = load_dataset("ought/raft", dataset_name)
@@ -148,12 +145,12 @@ print(next(iter(test_dataloader)))
 
 from peft import PeftModel, PeftConfig
 
-max_memory = {0: "1GIB", 1: "1GIB", 2: "2GIB", 3: "10GIB", "cpu": "30GB"}
+# max_memory = {0: "1GIB", 1: "1GIB", 2: "2GIB", 3: "10GIB", "cpu": "30GB"}
 peft_model_id = "smangrul/twitter_complaints_bigscience_bloomz-7b1_LORA_CAUSAL_LM"
 
 config = PeftConfig.from_pretrained(peft_model_id)
-model = AutoModelForCausalLM.from_pretrained(config.base_model_name_or_path, device_map="auto", max_memory=max_memory)
-model = PeftModel.from_pretrained(model, peft_model_id, device_map="auto", max_memory=max_memory)
+model = AutoModelForCausalLM.from_pretrained(config.base_model_name_or_path, device_map="auto")
+model = PeftModel.from_pretrained(model, peft_model_id, device_map="auto")
 
 
 # In[35]:

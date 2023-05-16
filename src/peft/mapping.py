@@ -20,48 +20,38 @@ from .peft_model import (
     PeftModelForSequenceClassification,
     PeftModelForTokenClassification,
 )
-from .tuners import LoraConfig, PrefixTuningConfig, PromptEncoderConfig, PromptTuningConfig
+from .tuners import (
+    AdaLoraConfig,
+    AdaptionPromptConfig,
+    LoraConfig,
+    PrefixTuningConfig,
+    PromptEncoderConfig,
+    PromptTuningConfig,
+)
 from .utils import PromptLearningConfig
 
-# 任务类型到模型的peft类的映射
+
 MODEL_TYPE_TO_PEFT_MODEL_MAPPING = {
     "SEQ_CLS": PeftModelForSequenceClassification,
     "SEQ_2_SEQ_LM": PeftModelForSeq2SeqLM,
     "CAUSAL_LM": PeftModelForCausalLM,
     "TOKEN_CLS": PeftModelForTokenClassification,
 }
-# peft模型类型到各种peft模型的配置的映射
+
 PEFT_TYPE_TO_CONFIG_MAPPING = {
+    "ADAPTION_PROMPT": AdaptionPromptConfig,
     "PROMPT_TUNING": PromptTuningConfig,
     "PREFIX_TUNING": PrefixTuningConfig,
     "P_TUNING": PromptEncoderConfig,
     "LORA": LoraConfig,
-}
-# 对于LoRA模型，需要将模型的某些层的权重转换为LoRA模型的权重，这是映射不同的模型应该转换哪些权重
-TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING = {
-    "t5": ["q", "v"],
-    "mt5": ["q", "v"],
-    "bart": ["q_proj", "v_proj"],
-    "gpt2": ["c_attn"],
-    "bloom": ["query_key_value"],
-    "opt": ["q_proj", "v_proj"],
-    "gptj": ["q_proj", "v_proj"],
-    "gpt_neox": ["query_key_value"],
-    "gpt_neo": ["q_proj", "v_proj"],
-    "bert": ["query", "value"],
-    "roberta": ["query", "value"],
-    "xlm-roberta": ["query", "value"],
-    "electra": ["query", "value"],
-    "deberta-v2": ["query_proj", "value_proj"],
-    "deberta": ["in_proj"],
-    "layoutlm": ["query", "value"],
+    "ADALORA": AdaLoraConfig,
 }
 
 
 def get_peft_config(config_dict):
     """
     Returns a Peft config object from a dictionary.
-    返回是4种peft配置中的一种，例如LoRA的配置
+
     Args:
         config_dict (`Dict[str, Any]`): Dictionary containing the configuration parameters.
     """
@@ -70,7 +60,6 @@ def get_peft_config(config_dict):
 
 
 def _prepare_prompt_learning_config(peft_config, model_config):
-    # 为提示学习准备的peft配置
     if peft_config.num_layers is None:
         if "num_hidden_layers" in model_config:
             num_layers = model_config["num_hidden_layers"]
@@ -112,36 +101,20 @@ def _prepare_prompt_learning_config(peft_config, model_config):
     return peft_config
 
 
-def _prepare_lora_config(peft_config, model_config):
-    # Lora的配置
-    if peft_config.target_modules is None:
-        if model_config["model_type"] not in TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING:
-            raise ValueError("Please specify `target_modules` in `peft_config`")
-        peft_config.target_modules = TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING[model_config["model_type"]]
-    if len(peft_config.target_modules) == 1:
-        peft_config.fan_in_fan_out = True
-        peft_config.enable_lora = [True, False, True]
-    if peft_config.inference_mode:
-        peft_config.merge_weights = True
-    return peft_config
-
-
 def get_peft_model(model, peft_config):
     """
     Returns a Peft model object from a model and a config.
-    返回哪种peft的任务类型的模型
+
     Args:
         model ([`transformers.PreTrainedModel`]): Model to be wrapped.
         peft_config ([`PeftConfig`]): Configuration object containing the parameters of the Peft model.
     """
-
-    model_config = model.config.to_dict()
+    model_config = model.config.to_dict() if hasattr(model.config, "to_dict") else model.config
     peft_config.base_model_name_or_path = model.__dict__.get("name_or_path", None)
-    if peft_config.task_type not in MODEL_TYPE_TO_PEFT_MODEL_MAPPING.keys():
-        peft_config = _prepare_lora_config(peft_config, model_config)
+    if peft_config.task_type not in MODEL_TYPE_TO_PEFT_MODEL_MAPPING.keys() and not isinstance(
+        peft_config, PromptLearningConfig
+    ):
         return PeftModel(model, peft_config)
-    if not isinstance(peft_config, PromptLearningConfig):
-        peft_config = _prepare_lora_config(peft_config, model_config)
-    else:
+    if isinstance(peft_config, PromptLearningConfig):
         peft_config = _prepare_prompt_learning_config(peft_config, model_config)
     return MODEL_TYPE_TO_PEFT_MODEL_MAPPING[peft_config.task_type](model, peft_config)

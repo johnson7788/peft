@@ -21,23 +21,19 @@ from typing import Optional, Union
 from huggingface_hub import hf_hub_download
 from transformers.utils import PushToHubMixin
 
-from .adapters_utils import CONFIG_NAME
+from .other import CONFIG_NAME
 
 
 class PeftType(str, enum.Enum):
-    """
-    PEFT模型的类型
-    """
     PROMPT_TUNING = "PROMPT_TUNING"
     P_TUNING = "P_TUNING"
     PREFIX_TUNING = "PREFIX_TUNING"
     LORA = "LORA"
+    ADALORA = "ADALORA"
+    ADAPTION_PROMPT = "ADAPTION_PROMPT"
 
 
 class TaskType(str, enum.Enum):
-    """
-    任务类型，支持的任务类型包括：序列分类，序列到序列语言模型，因果语言模型，token分类
-    """
     SEQ_CLS = "SEQ_CLS"
     SEQ_2_SEQ_LM = "SEQ_2_SEQ_LM"
     CAUSAL_LM = "CAUSAL_LM"
@@ -47,10 +43,11 @@ class TaskType(str, enum.Enum):
 @dataclass
 class PeftConfigMixin(PushToHubMixin):
     r"""
-    这是PEFT适配器模型的基础配置类。它包含了所有PEFT适配器模型所共有的方法。
-    这个类继承于`transformers.utils.PushToHubMixin`，它包含了将你的模型推送到Hub的方法。
-    方法`save_pretrained`将在一个目录中保存你的适配器模型的配置。
-    方法`from_pretrained`将从一个目录中加载你的适配器模型的配置。
+    This is the base configuration class for PEFT adapter models. It contains all the methods that are common to all
+    PEFT adapter models. This class inherits from [`~transformers.utils.PushToHubMixin`] which contains the methods to
+    push your model to the Hub. The method `save_pretrained` will save the configuration of your adapter model in a
+    directory. The method `from_pretrained` will load the configuration of your adapter model from a directory.
+
     Args:
         peft_type (Union[[`~peft.utils.config.PeftType`], `str`]): The type of Peft method to use.
     """
@@ -70,8 +67,8 @@ class PeftConfigMixin(PushToHubMixin):
         Args:
             save_directory (`str`):
                 The directory where the configuration will be saved.
-            **kwargs:
-                Additional keyword arguments passed along to the `transformers.utils.PushToHubMixin.push_to_hub`
+            kwargs (additional keyword arguments, *optional*):
+                Additional keyword arguments passed along to the [`~transformers.utils.PushToHubMixin.push_to_hub`]
                 method.
         """
         if os.path.isfile(save_directory):
@@ -87,23 +84,28 @@ class PeftConfigMixin(PushToHubMixin):
             writer.write(json.dumps(output_dict, indent=2, sort_keys=True))
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path, **kwargs):
+    def from_pretrained(cls, pretrained_model_name_or_path, subfolder=None, **kwargs):
         r"""
         This method loads the configuration of your adapter model from a directory.
 
         Args:
             pretrained_model_name_or_path (`str`):
-                The directory or the hub-id where the configuration is saved.
-            **kwargs:
+                The directory or the Hub repository id where the configuration is saved.
+            kwargs (additional keyword arguments, *optional*):
                 Additional keyword arguments passed along to the child class initialization.
         """
-        if os.path.isfile(os.path.join(pretrained_model_name_or_path, CONFIG_NAME)):
-            config_file = os.path.join(pretrained_model_name_or_path, CONFIG_NAME)
+        path = (
+            os.path.join(pretrained_model_name_or_path, subfolder)
+            if subfolder is not None
+            else pretrained_model_name_or_path
+        )
+        if os.path.isfile(os.path.join(path, CONFIG_NAME)):
+            config_file = os.path.join(path, CONFIG_NAME)
         else:
             try:
-                config_file = hf_hub_download(pretrained_model_name_or_path, CONFIG_NAME)
+                config_file = hf_hub_download(pretrained_model_name_or_path, CONFIG_NAME, subfolder=subfolder)
             except Exception:
-                raise ValueError(f"Can't find config.json at '{pretrained_model_name_or_path}'")
+                raise ValueError(f"Can't find '{CONFIG_NAME}' at '{pretrained_model_name_or_path}'")
 
         loaded_attributes = cls.from_json_file(config_file)
 
@@ -133,7 +135,7 @@ class PeftConfigMixin(PushToHubMixin):
 @dataclass
 class PeftConfig(PeftConfigMixin):
     """
-    这是一个基础配置类，用于存储一个:class:`~peft.PeftModel`的配置。
+    This is the base configuration class to store the configuration of a [`PeftModel`].
 
     Args:
         peft_type (Union[[`~peft.utils.config.PeftType`], `str`]): The type of Peft method to use.
@@ -150,8 +152,8 @@ class PeftConfig(PeftConfigMixin):
 @dataclass
 class PromptLearningConfig(PeftConfig):
     """
-    这是一个基础配置类，用于存储Union[[`~peft.PrefixTuning]]的配置。
-    [`~peft.PromptEncoder`], [`~peft.PromptTuning`]].
+    This is the base configuration class to store the configuration of [`PrefixTuning`], [`PromptEncoder`], or
+    [`PromptTuning`].
 
     Args:
         num_virtual_tokens (`int`): The number of virtual tokens to use.

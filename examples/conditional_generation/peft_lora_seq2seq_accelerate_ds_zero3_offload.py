@@ -102,7 +102,8 @@ class TorchTracemalloc:
 
 def main():
     accelerator = Accelerator()
-    model_name_or_path = "bigscience/T0_3B"
+    # model_name_or_path = "bigscience/T0_3B"
+    model_name_or_path = "facebook/bart-large"
     dataset_name = "twitter_complaints"
     peft_config = LoraConfig(
         task_type=TaskType.SEQ_2_SEQ_LM, inference_mode=False, r=8, lora_alpha=32, lora_dropout=0.1
@@ -231,7 +232,7 @@ def main():
                         **batch, synced_gpus=is_ds_zero_3
                     )  # synced_gpus=True for DS-stage 3
                 outputs = accelerator.pad_across_processes(outputs, dim=1, pad_index=tokenizer.pad_token_id)
-                preds = accelerator.gather(outputs).detach().cpu().numpy()
+                preds = accelerator.gather_for_metrics(outputs).detach().cpu().numpy()
                 eval_preds.extend(tokenizer.batch_decode(preds, skip_special_tokens=True))
 
         # Printing the GPU memory usage details such as allocated memory, peak memory, and total memory usage
